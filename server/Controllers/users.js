@@ -42,9 +42,9 @@ const getAllStudents = (req, res) => {
 }
 
 const getAllCompanies = (req, res) => {
-    User.find({ role: 'company' }, { password: 0 }, (err, companines) => {
+    User.find({ role: 'company' }, { password: 0 }, (err, companies) => {
         if (err) return res.status(400).json({ status: false, err });
-        res.status(200).json({ status: true, companines })
+        res.status(200).json({ status: true, companies })
     })
 }
 
