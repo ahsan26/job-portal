@@ -1,6 +1,7 @@
 import User from "../Models/user";
 import JWT from "jsonwebtoken";
 import key from "../Utils/key";
+import Job from "../Models/job"
 const signToken = user => JWT.sign({ userId: user.id }, key)
 
 const signUp = (req, res) => {
@@ -48,8 +49,6 @@ const getAllCompanies = (req, res) => {
     })
 }
 
-
-
 const removeStudent = (req, res) => {
     const studentId = { _id: req.params.id }
     User.remove(studentId, err => {
@@ -60,10 +59,15 @@ const removeStudent = (req, res) => {
 
 const removeCompany = (req, res) => {
     const companyId = { _id: req.params.id }
-    User.remove(companyId, err => {
+    User.deleteOne(companyId, err => {
         if (err) return res.status(400).json({ status: false, err });
         res.status(200).json({ status: true })
     })
 }
-
-module.exports = { signUp, getAllStudents, signIn, getAllCompanies, removeCompany, removeStudent }
+const checkOneCompany = (req, res) => {
+    User.findOne({ _id: req.params.id }, (err, data) => {
+        if (err) return res.status(400).json({ status: false, err });
+        res.status(200).json({ status: true, data })
+    })
+}
+module.exports = { checkOneCompany, signUp, getAllStudents, signIn, getAllCompanies, removeCompany, removeStudent }
