@@ -1,0 +1,11 @@
+body{
+  margin: 0;
+}
+.deleteIcon{
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.40s ease;
+}
+.deleteIcon:hover{
+  color: red;
+}
