@@ -59,7 +59,7 @@ class JobsOfThatCompany extends React.Component {
                     <tbody>
 
                         {
-                            !jobs.length ? 'No Jobs To Show!' : jobs.map((job, i) => (<tr key={job.title}>
+                            !jobs.length ? 'No Jobs To Show!' : jobs.map((job, i) => (<tr key={`${job.title}${i}`}>
                                 <td>{i + 1}</td>
                                 <td onClick={_ => this.props.history.push(`/job/${job._id}`, job)} style={{ color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}>{job.title}</td>
                                 {

@@ -4,70 +4,84 @@ import key from "../Utils/key";
 import Job from "../Models/job"
 const signToken = user => JWT.sign({ userId: user.id }, key)
 
-const signUp = (req, res) => {
+const signUp = async (req, res) => {
     const { email, role } = req.body;
-    User.find({ email }, (err, data) => {
-        if (data.length) return res.status(400).json({ status: false, err: "Email address already exists!" })
-        req.body.info = {};
-        if (role === 'company') {
-            req.body.info.jobsPosted = [];
-        } else if (role === 'student') {
-            req.body.info.jobsApplied = [];
-        }
-        const newUser = new User(req.body);
-        newUser.save((err, data) => {
-            if (err) return res.status(400).json({ status: false, err });
-            const token = signToken(data);
-            data.password = '';
-            res.status(200).json({ status: true, data, token });
-        });
+    const foundUser = await User.findOne({ email })
+    if (foundUser) return res.status(400).json({ status: false, err: "Email address already exists!" })
+    req.body.info = {};
+    if (role === 'company') {
+        req.body.info.jobsPosted = [];
+    } else if (role === 'student') {
+        req.body.info.jobsApplied = [];
+    }
+    const newUser = new User(req.body);
+    newUser.save().then(data => {
+        const token = signToken(data);
+        data.password = '';
+        res.status(200).json({ status: true, data, token });
+    }).catch(err => {
+        res.status(400).json({ status: false, err });
     })
 };
 
-const signIn = (req, res) => {
+const signIn = async (req, res) => {
     const { email, password } = req.body;
-    User.findOne({ email }, async (err, data) => {
-        if (!data) return res.status(400).json({ status: false, err: 'Wrong Credentials' })
-        const checkPassword = await data.isValidPassword(password);
-        if (!checkPassword) return res.status(400).json({ status: false, err: 'Password is Wrong' });
-        data.password = '';
-        return res.status(200).json({ status: true, data, token: signToken(data) });
-    })
+    const foundUser = await User.findOne({ email });
+    if (!foundUser) return res.status(400).json({ status: false, err: 'Wrong Credentials' })
+    const checkPassword = await foundUser.isValidPassword(password);
+    if (!checkPassword) return res.status(400).json({ status: false, err: 'Password is Wrong' });
+    foundUser.password = '';
+    return res.status(200).json({ status: true, data: foundUser, token: signToken(foundUser) });
 }
 
-const getAllStudents = (req, res) => {
-    User.find({ role: 'student' }, { password: 0 }, (err, students) => {
-        if (err) return res.status(400).json({ status: false, err });
-        res.status(200).json({ status: true, students })
-    })
+const getAllStudents = async (req, res) => {
+    const students = await User.find({ role: 'student' }, { password: 0 })
+    if (!students) return res.status(400).json({ status: false, err: students });
+    res.status(200).json({ status: true, students })
 }
 
-const getAllCompanies = (req, res) => {
-    User.find({ role: 'company' }, { password: 0 }, (err, companies) => {
-        if (err) return res.status(400).json({ status: false, err });
-        res.status(200).json({ status: true, companies })
-    })
+const getAllCompanies = async (req, res) => {
+    const allCompanies = await User.find({ role: 'company' }, { password: 0 });
+    if (!allCompanies) return res.status(400).json({ status: false, err: allCompanies });
+    res.status(200).json({ status: true, companies: allCompanies })
 }
 
-const removeStudent = (req, res) => {
+const removeStudent = async (req, res) => {
     const studentId = { _id: req.params.id }
-    User.remove(studentId, err => {
-        if (err) return res.status(400).json({ status: false, err });
-        res.status(200).json({ status: true })
+    let jobs = await Job.find({});
+    for (let i = 0; i < jobs.length; i++) {
+        for (let j = 0; j < jobs[i].applicants.length; j++) {
+            if (jobs[i].applicants[j]._id === req.params.id) {
+                jobs[i].applicants.splice(j, 1)
+            }
+        }
+    }
+    const jobsIds = jobs.map(job => ({ _id: job._id }))
+    jobsIds.forEach(async (jobId, I) => {
+        await Job.update(jobId, jobs[I]);
+    })
+    User.deleteOne(studentId).then(async data => {
+        Job.updateMany(jobs).then(_ => {
+            res.status(200).json({ status: true })
+        })
+    }).catch(err => {
+        res.status(400).json({ status: false, err });
     })
 }
 
 const removeCompany = (req, res) => {
     const companyId = { _id: req.params.id }
-    User.deleteOne(companyId, err => {
-        if (err) return res.status(400).json({ status: false, err });
-        res.status(200).json({ status: true })
+    User.deleteOne(companyId).then(data => {
+        Job.deleteMany({ companyId: companyId._id }).then(_ => {
+            res.status(200).json({ status: true })
+        })
+    }).catch(err => {
+        res.status(400).json({ status: false, err });
     })
 }
-const checkOneCompany = (req, res) => {
-    User.findOne({ _id: req.params.id }, (err, data) => {
-        if (err) return res.status(400).json({ status: false, err });
-        res.status(200).json({ status: true, data })
-    })
+const checkOneCompany = async (req, res) => {
+    const company = await User.findOne({ _id: req.params.id })
+    if (!company) return res.status(400).json({ status: false, err });
+    res.status(200).json({ status: true, data: company })
 }
 module.exports = { checkOneCompany, signUp, getAllStudents, signIn, getAllCompanies, removeCompany, removeStudent }
